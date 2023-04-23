@@ -17,49 +17,50 @@ from struct import *
 
 #Get string of 6 characters as ethernet address into dash seperated hex string
 def eth_addr(a):
-	b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" %(ord(a[0]),ord(a[1]),ord(a[2]),ord(a[3]),ord(a[4]),ord(a[5]))
+	b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0],a[1],a[2],a[3],a[4],a[5])
 	return b
 
 #create an INET, STREAMing socket
 try:
 	#s=socket.socket(socket.AF_PACKET,socket.SOCK_RAW,socket.ntohs(0x0003))
-	s=socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
+	s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
 	#AF_INET is the family of sockets created - TCP or UDP
 	#Socket type is SOCK_RAW instead of SOCK_STREAM or SOCK_DGRAM
 	#Socket protocol specified is IP-PROTO_<TCP/UDP/ICMP>
-except socket.error,msg:
-	print 'Socket could not be created. Error Code : '+str(msg[0])+'Message '+msg[1] 
-	sys.exit
+except socket.error as error:
+	print('Socket could not be created. Error: %s. Message: %s.' %(error.errno, error.strerror)) 
+	sys.exit(1)
 count = 0
-print 'Getting a packet\n\n'
+print('Getting a packet\n\n')
 #get a packet 
 while True:
-	packet = s.recvfrom(65565) #keep in mind that this port binding won't work in Windows
-				   #Windows uses a Winsock API hook or Winpcap driver for sockets
+	packet = s.recvfrom(65565)
+	#keep in mind that this port binding won't work in Windows
+	#Windows uses a Winsock API hook or Winpcap driver for sockets
 	#socket.recvfrom(buffersize,[flags]) gets the data from the socket. O/P - (string,address)
 
-	print 'Packet Received:'+str(packet)+'\n\n'
-	count= count+1
+	print ('Packet Received: %s\n\n' % packet)
+	count = count+1
 	#packet string from tuple
-	packet=packet[0]
+	packet = packet[0]
 	
 	#-------------------L2 Information-------------------------------------
 	eth_length = 14
 	eth_header = packet[:eth_length]
-	eth_unpack =  unpack('!6s6sH',eth_header)
+	eth_unpack =  unpack('!6s6sH', eth_header)
 	eth_protocol = socket.ntohs(eth_unpack[2])
-	print '###############Layer 2 Information############'
-	print 'Destination MAC:'+eth_addr(packet[0:6])
-	print 'Source MAC:'+eth_addr(packet[6:12])
-	print 'Protcol:'+str(eth_protocol)
-	print '-----------------------------------------------------------------\n\n' 
+	print('###############Layer 2 Information############')
+	print('Destination MAC: %s' % eth_addr(packet[0:6]))
+	print('Source MAC: %s' % eth_addr(packet[6:12]))
+	print('Protcol: %s' % eth_protocol)
+	print('-----------------------------------------------------------------\n\n' )
 	
         #-------------------IP HEADER EXTRACTION--------------------------------
 	#take the first 20 characters for the IP header
 	ip_header = packet[0:20]
 	
 	#now unpack 'em
-	header_unpacked = unpack('!BBHHHBBH4s4s',ip_header)
+	header_unpacked = unpack('!BBHHHBBH4s4s', ip_header)
 	#https://docs.python.org/2/library/struct.html#format-characters
 	
 	version_ih1= header_unpacked[0] 
@@ -72,9 +73,9 @@ while True:
 	protocol = header_unpacked[6]
 	source_add = socket.inet_ntoa(header_unpacked[8])
 	destination_add = socket.inet_ntoa(header_unpacked[9])
-	print '##########IP Header Info##############'
-	print 'Version : '+str(version)+ '\nIP Header Length:'+str(ih1)+'\nTTL:'+str(ttl)+'\nProtocol:'+str(protocol)+'\nSource Address:'+str(source_add)+'\nDestination Address:'+str(destination_add)
-	print '-------------------------------------------\n\n'
+	print('##########IP Header Info##############')
+	print('Version : %s\nIP Header Length: %s\nTTL: %s\nProtocol: %s\nSource Address: %s\nDestination Address: %s' % (version, ih1, ttl, protocol, source_add, destination_add))
+	print('-------------------------------------------\n\n')
 
 	#-----------------------------------------------------------------------------
 
@@ -84,7 +85,7 @@ while True:
 	tcp_header = packet[iph_length:iph_length+20]
 
 	#unpack them 
-	tcph = unpack('!HHLLBBHHH',tcp_header)
+	tcph = unpack('!HHLLBBHHH', tcp_header)
 	
 	source_port = tcph[0]
 	dest_port = tcph[1]
@@ -94,13 +95,13 @@ while True:
 	tcph_len = resrve >> 4
 
 	#print it all out
-	print '###########TCP Header Info##############'
-	print 'Source Port:'+str(source_port)
-	print 'Destination Port:'+str(dest_port)
-	print 'Sequence Number:'+str(sequence)
-	print 'Acknowledgement:'+str(ack)	
-	print 'TCP Header Length:'+str(tcph_len)
-	print '------------------------------------------\n\n'
+	print('###########TCP Header Info##############')
+	print('Source Port: %s' % source_port)
+	print('Destination Port: %s' % dest_port)
+	print('Sequence Number: %s' % sequence)
+	print('Acknowledgement: %s' % ack)
+	print('TCP Header Length: %s' % tcph_len)
+	print('------------------------------------------\n\n')
 	#-------------------------------------------------------------------------------
 
 	#------------------------Get the DATA-------------------------------------------
@@ -110,9 +111,9 @@ while True:
 	#get the data yo!
 	data = packet[h_size:]
 	
-	print '##############DATA##################'
-	print 'Data:'+data
-	print '------------------------------------\n\n'
+	print('##############DATA##################')
+	print('Data: %s' % data)
+	print('------------------------------------\n\n')
 
-	print ' Packet %d is done!\n'%count 
+	print('Packet %d is done!\n' % count)
 
